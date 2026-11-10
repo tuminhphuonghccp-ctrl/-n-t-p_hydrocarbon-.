@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đường Đua Mạch Carbon - Tiếp Sức</title>
+    <style>
+        :root {
+            --medical-green: #10b981;
+            --medical-green-hover: #059669;
+            --sky-blue: #0ea5e9;
+            --bg-color: #f0f9ff;
+            --text-dark: #1e293b;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-dark); display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 2rem; }
+        
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { color: var(--sky-blue); font-size: 2.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .dashboard { display: flex; gap: 2rem; margin-bottom: 2rem; width: 100%; max-width: 800px; justify-content: space-between; background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 5px solid var(--medical-green); }
+        .stat-box { text-align: center; }
+        .stat-label { font-size: 0.9rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--medical-green); font-variant-numeric: tabular-nums; }
+        .stat-value.error { color: var(--danger); }
+        
+        .game-container { background: white; width: 100%; max-width: 800px; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); display: none; }
+        
+        .question-number { font-size: 1.2rem; font-weight: 600; color: var(--sky-blue); margin-bottom: 1rem; }
+        .question-text { font-size: 1.5rem; line-height: 1.4; margin-bottom: 2rem; font-weight: 500; }
+        
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .option-btn { background: #f8fafc; border: 2px solid #e2e8f0; padding: 1.2rem; border-radius: 8px; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; font-weight: 500; color: var(--text-dark); text-align: left; line-height: 1.3;}
+        .option-btn:hover { border-color: var(--sky-blue); background: #e0f2fe; }
+        .option-btn.correct { background: var(--medical-green); color: white; border-color: var(--medical-green); }
+        .option-btn.wrong { background: var(--danger); color: white; border-color: var(--danger); animation: shake 0.4s; }
+        
+        .setup-screen { display: flex; flex-direction: column; align-items: center; gap: 1rem; background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        .btn-start { background: var(--medical-green); color: white; border: none; padding: 1rem 3rem; font-size: 1.2rem; border-radius: 8px; cursor: pointer; font-weight: bold; text-transform: uppercase; transition: background 0.2s; }
+        .btn-start:hover { background: var(--medical-green-hover); }
+
+        .result-screen { text-align: center; display: none; background: white; padding: 3rem; border-radius: 16px; box-shadow: 0 10px 15px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        .result-screen h2 { color: var(--medical-green); font-size: 2.5rem; margin-bottom: 1rem; }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Đường Đua Mạch Carbon</h1>
+    </div>
+
+    <!-- Màn hình chờ -->
+    <div class="setup-screen" id="setupScreen">
+        <h2>Đội chuẩn bị sẵn sàng!</h2>
+        <p>Gồm 22 câu hỏi. Mỗi câu trả lời sai bị cộng phạt 5 giây.</p>
+        <button class="btn-start" onclick="startGame()">Bắt đầu tiếp sức</button>
+    </div>
+
+    <!-- Bảng thống kê -->
+    <div class="dashboard" id="dashboard" style="display: none;">
+        <div class="stat-box">
+            <div class="stat-label">Thời gian</div>
+            <div class="stat-value" id="timer">00:00.0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Tiến độ</div>
+            <div class="stat-value" id="progress">1 / 22</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Lỗi phạt (+5s)</div>
+            <div class="stat-value error" id="penaltyCount">0</div>
+        </div>
+    </div>
+
+    <!-- Màn hình chơi -->
+    <div class="game-container" id="gameScreen">
+        <div class="question-number" id="qNumber">Người số 1 - Câu 1:</div>
+        <div class="question-text" id="qText">Nội dung câu hỏi hiển thị ở đây?</div>
+        <div class="options-grid" id="optionsGrid">
+            <!-- Nút đáp án sinh tự động -->
+        </div>
+    </div>
+
+    <!-- Màn hình kết quả -->
+    <div class="result-screen" id="resultScreen">
+        <h2>HOÀN THÀNH XUẤT SẮC!</h2>
+        <p style="font-size: 1.2rem; margin: 1rem 0;">Đội đã hoàn thành 22 câu hỏi.</p>
+        <div style="font-size: 1.5rem; margin: 1rem 0;">Thời gian gốc: <strong id="resRawTime">00:00</strong></div>
+        <div style="font-size: 1.5rem; margin: 1rem 0; color: var(--danger)">Cộng phạt: <strong id="resPenalty">0</strong> giây</div>
+        <div style="font-size: 2.2rem; margin: 2rem 0; font-weight: bold; color: var(--sky-blue)">THÀNH TÍCH CUỐI CÙNG: <br><span id="resTotalTime">00:00.0</span></div>
+        <button class="btn-start" onclick="location.reload()">Chơi lại / Đội tiếp theo</button>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                q: "Ở điều kiện thường hydrocarbon nào sau đây ở thể khí?",
+                opts: ["C4H10", "C5H12", "C6H14", "C5H8"],
+                ans: 0
+            },
+            {
+                q: "Để phân biệt 3 khí C2H4, C2H6, C2H2 người ta dùng các thuốc thử là:",
+                opts: ["Dung dịch KMnO4", "H2O, H+", "Dung dịch AgNO3/NH3 sau đó là dung dịch Br2", "Cl2 (điều kiện ánh sáng khuếch tán)"],
+                ans: 2
+            },
+            {
+                q: "Cho các phản ứng:\n1. HBr + C2H5OH\n2. C2H4 + Br2\n3. C2H4 + HBr\n4. C2H6 + Br2\nSố phản ứng tạo ra C2H5Br là:",
+                opts: ["4", "3", "2", "1"],
+                ans: 1
+            },
+            {
+                q: "Cho phản ứng: C2H2 + H2O → A. A là chất nào sau đây?",
+                opts: ["CH2 = CHOH", "CH3CHO", "CH3COOH", "C2H5OH"],
+                ans: 1
+            },
+            {
+                q: "Hydrat hóa 2-methylbut-2-en thì thu được sản phẩm chính là:",
+                opts: ["3-methylbutan-1-ol", "3-methylbutan-2-ol", "2-methylbutan-2-ol", "2-methylbutan-1-ol"],
+                ans: 2
+            },
+            {
+                q: "Cho sơ đồ phản ứng sau: CH3C≡CH + AgNO3/NH3 → X + NH4NO3. X có công thức cấu tạo là:",
+                opts: ["CH3CAg≡CAg", "CH3-C≡CAg", "AgCH2C≡CAg", "Cả 3 chất trên đều đúng"],
+                ans: 1
+            },
+            {
+                q: "Quy tắc Maccopnicop được áp dụng trong trường hợp nào dưới đây:",
+                opts: ["Phản ứng cộng của Br2 với alken đối xứng", "Phản ứng cộng của HX vào alken đối xứng", "Phản ứng trùng hợp alken", "Phản ứng cộng của HX vào alken bất đối xứng"],
+                ans: 3
+            },
+            {
+                q: "Các nhận xét dưới đây, nhận xét nào sai?",
+                opts: ["Tất cả các alkan đều có công thức phân tử CnH2n+2.", "Tất cả các alkan đều có khả năng tham gia phản ứng cộng.", "Tất cả các alkan đều chỉ có liên kết đơn trong phân tử.", "Tất cả các alkan đều có khả năng tham gia phản ứng thế."],
+                ans: 1
+            },
+            {
+                q: "Hai chất 2-methylpropan và butan khác nhau về điểm nào sau đây?",
+                opts: ["Công thức cấu tạo.", "Công thức phân tử.", "Số nguyên tử carbon.", "Số liên kết cộng hóa trị."],
+                ans: 0
+            },
+            {
+                q: "Tất cả các alkan có cùng công thức nào sau đây?",
+                opts: ["Công thức đơn giản nhất.", "Công thức chung.", "Công thức cấu tạo.", "Công thức phân tử."],
+                ans: 1
+            },
+            {
+                q: "Trong các chất dưới đây, chất nào có nhiệt độ sôi thấp nhất?",
+                opts: ["Butan", "Ethan", "Methan", "Propan"],
+                ans: 2
+            },
+            {
+                q: "Các alkan không tham gia loại phản ứng nào?",
+                opts: ["Phản ứng thế.", "Phản ứng cộng.", "Phản ứng tách.", "Phản ứng cháy."],
+                ans: 1
+            },
+            {
+                q: "Hợp chất sau có danh pháp IUPAC là gì? CH3 – C(CH3)2 – C ≡ CH",
+                opts: ["2,2- dimethylbut-1-yn.", "2,2- dimethylbut-3-yn.", "3,3- dimethylbut-1-yn.", "3,3- dimethylbut-2-yn."],
+                ans: 2
+            },
+            {
+                q: "Ứng với công thức phân tử C5H12 có bao nhiêu đồng phân cấu tạo:",
+                opts: ["2", "3", "4", "5"],
+                ans: 1
+            },
+            {
+                q: "Danh pháp IUPAC của hợp chất dưới đây: CH3 – CH(CH3) – CH2 – CH(CH3) – CH2 – CH2 – CH3",
+                opts: ["2,4 - dimethyl - 4 - propylpentan.", "2,4 - dimethylheptan.", "2 - methyl-4-propylpentan.", "4,6 - dimethylheptan."],
+                ans: 1
+            },
+            {
+                q: "Sản phẩm của phản ứng: C2H4 + KMnO4 + H2O",
+                opts: ["MnO2, C2H4(OH)2, KOH.", "C2H5OH, MnO2, KOH.", "K2CO3, H2O, MnO2.", "C2H4(OH)2, K2CO3, MnO2."],
+                ans: 0
+            },
+            {
+                q: "Có 4 chất: methan, ethylen, but-1-yn và but-2-yn. Trong 4 chất đó, có mấy chất tác dụng được với dung dịch AgNO3 trong amoniac để tạo thành kết tủa?",
+                opts: ["1 chất.", "2 chất.", "3 chất.", "4 chất."],
+                ans: 0
+            },
+            {
+                q: "Phản ứng của methan với clor (ánh sáng khuếch tán) xảy ra theo cơ chế:",
+                opts: ["Thế ái điện tử.", "Cộng ái nhân.", "Cộng ái điện tử.", "Thế gốc."],
+                ans: 3
+            },
+            {
+                q: "Phản ứng của alken với hydrohalogenid (HX) theo qui tắc Markovnikov xảy ra theo cơ chế nào?",
+                opts: ["Thế ái nhân.", "Thế ái điện tử.", "Cộng ái nhân.", "Cộng ái điện tử."],
+                ans: 3
+            },
+            {
+                q: "Hợp chất (CH3)2C = CH – C(CH3)3 có danh pháp theo IUPAC là:",
+                opts: ["2,2,4-trimethylpent-3-en.", "2,4-trimethylpent-2-en.", "2,4,4-trimethylpent-2-en.", "2,4-trimethylpent-3-en."],
+                ans: 2
+            },
+            {
+                q: "Sản phẩm chính của phản ứng monoclor hóa 2-methylbutan là:",
+                opts: ["1-cloro-3-methylbutan.", "2-cloro-3-methylbutan.", "2-cloro-2-methylbutan.", "1-cloro-2-methylbutan."],
+                ans: 2
+            },
+            {
+                q: "Để làm sạch khí ethylen (CH2 = CH2) có lẫn khí acetylen (HC ≡ CH) ta cho hỗn hợp khí qua dung dịch nào sau đây:",
+                opts: ["Dung dịch nước brom dư.", "Dung dịch KMnO4 dư.", "Dung dịch AgNO3/NH3 dư.", "Cả A, B, C đều đúng."],
+                ans: 2
+            }
+        ];
+
+        const totalQuestions = questions.length; 
+        
+        let currentIdx = 0;
+        let penalties = 0;
+        let startTime;
+        let timerInterval;
+        let isAnswering = false;
+
+        function updateTimer() {
+            const now = new Date().getTime();
+            const diff = now - startTime;
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            const ms = Math.floor((diff % 1000) / 100);
+            document.getElementById('timer').innerText = 
+                (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s) + "." + ms;
+        }
+
+        function startGame() {
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'flex';
+            document.getElementById('gameScreen').style.display = 'block';
+            
+            currentIdx = 0;
+            penalties = 0;
+            startTime = new Date().getTime();
+            timerInterval = setInterval(updateTimer, 100);
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isAnswering = false;
+            document.getElementById('progress').innerText = (currentIdx + 1) + " / " + totalQuestions;
+            document.getElementById('qNumber').innerText = "Lượt chơi thứ " + (currentIdx + 1) + " - Câu " + (currentIdx + 1) + ":";
+            
+            const q = questions[currentIdx];
+            document.getElementById('qText').innerText = q.q;
+            
+            const grid = document.getElementById('optionsGrid');
+            grid.innerHTML = '';
+            
+            q.opts.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => checkAnswer(idx, btn);
+                grid.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIdx, btn) {
+            if (isAnswering) return; 
+            isAnswering = true;
+            
+            const correctIdx = questions[currentIdx].ans;
+            
+            if (selectedIdx === correctIdx) {
+                btn.classList.add('correct');
+                setTimeout(() => {
+                    currentIdx++;
+                    if (currentIdx < totalQuestions) {
+                        loadQuestion();
+                    } else {
+                        endGame();
+                    }
+                }, 400); 
+            } else {
+                btn.classList.add('wrong');
+                penalties++;
+                document.getElementById('penaltyCount').innerText = penalties;
+                setTimeout(() => {
+                    btn.classList.remove('wrong');
+                    isAnswering = false;
+                }, 600);
+            }
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'none';
+            
+            const now = new Date().getTime();
+            const rawDiff = now - startTime;
+            const penaltyMs = penalties * 5000;
+            const finalDiff = rawDiff + penaltyMs;
+            
+            const formatTime = (ms_diff) => {
+                const m = Math.floor((ms_diff % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((ms_diff % (1000 * 60)) / 1000);
+                const ms = Math.floor((ms_diff % 1000) / 100);
+                return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s) + "." + ms;
+            };
+
+            document.getElementById('resRawTime').innerText = document.getElementById('timer').innerText;
+            document.getElementById('resPenalty').innerText = penalties * 5;
+            document.getElementById('resTotalTime').innerText = formatTime(finalDiff);
+            
+            document.getElementById('resultScreen').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
